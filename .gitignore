@@ -1,0 +1,27 @@
+# Secrets — never commit real values
+.env
+.env.local
+*.env
+!.env.example
+
+# Backend (Maven)
+backend/target/
+*.class
+*.jar
+!backend/.mvn/wrapper/maven-wrapper.jar
+
+# Frontend (Node)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Old backup / scratch folders — not part of the shipped app
+backup-before-finalization/
+*.tar.gz

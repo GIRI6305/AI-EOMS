@@ -1,0 +1,13 @@
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  background: #070b14;
+}
+
+body {
+  margin: 0;
+}

@@ -1,0 +1,75 @@
+services:
+
+  kafka:
+    image: apache/kafka:4.0.0
+    container_name: ai-eoms-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-eoms-backend
+    restart: unless-stopped
+
+    depends_on:
+      kafka:
+        condition: service_started
+
+    environment:
+      SERVER_PORT: "8080"
+
+      DB_URL: "jdbc:mysql://gateway01.us-east-1.prod.aws.tidbcloud.com:4000/ai_eoms?sslMode=VERIFY_IDENTITY&useSSL=true"
+      DB_USERNAME: "${DB_USERNAME:?DB_USERNAME must be set in .env}"
+      DB_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD must be set in .env}"
+
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      KAFKA_CONSUMER_GROUP: "ai-eoms-group"
+      KAFKA_AUTO_OFFSET_RESET: "earliest"
+
+      OPENAI_API_KEY: "${OPENAI_API_KEY:?OPENAI_API_KEY must be set in .env}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-https://api.groq.com/openai/v1}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-llama-3.1-8b-instant}"
+      OPENAI_TEMPERATURE: "${OPENAI_TEMPERATURE:-0.2}"
+
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
+      JWT_EXPIRATION: "${JWT_EXPIRATION:-86400000}"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "/"
+
+    container_name: ai-eoms-frontend
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "80:80"
